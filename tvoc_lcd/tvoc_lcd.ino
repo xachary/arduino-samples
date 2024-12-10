@@ -1,8 +1,10 @@
-#include "lcd_1602_4.h"  // LCD显示
-#include "dht_11.h"      // 温湿度
-#include "kq_2801.h"     // TVOC指数
-#include "hc_sr04.h"     // 超声波距离
-#include "hc_sr501.h"    // 红外人体感应
+#include "lcd_1602_4.h"      // LCD显示
+#include "dht_11.h"          // 温湿度
+#include "kq_2801.h"         // TVOC指数
+#include "hc_sr04.h"         // 超声波距离
+#include "hc_sr501.h"        // 红外人体感应
+#include "buzzer_active.h"   // 有源蜂鸣器
+#include "buzzer_passive.h"  // 无源蜂鸣器
 
 // 工具实例
 
@@ -23,6 +25,12 @@ HC_SR04 SR04(5, 4);
 // 元器件面（针脚在上方）：1->VCC(5V)、2->D?(~)、3->D?、4->GND
 HC_SR501 SR501(A1);
 
+// 正(+)->D?、负(-)->GND
+Buzzer_Active BA(3);
+
+// 正(长)->D?、负(短)->GND
+Buzzer_Passive BP(A3);
+
 void setup() {
   Serial.begin(9600);  //UART setup, baudrate = 9600bps
 
@@ -30,6 +38,8 @@ void setup() {
   LCD.Init();
   KQ.Init();
   SR501.Init();
+  BA.Init();
+  BP.Init();
 
   delay(1000);
 
@@ -138,6 +148,14 @@ void loop() {
   SR04.Read();
   SR501.Read();
 
+  // 距离小于20cm，有源蜂鸣器响一下
+  if (SR04.distance < 20) {
+    BP.Sound(100, 2, 6);
+  }
+
+  // 有源蜂鸣器：重置
+  BA.Off();
+
   // LCD显示内容
   char distanceStr[5] = "";
   itoa(SR04.distance, distanceStr, 10);
@@ -156,6 +174,9 @@ void loop() {
       strcat(activeStr, distanceStr);
 
       process(activeStr);
+
+      // 有源蜂鸣器：响一下
+      BA.On();
     } else {
       process(distanceStr);
     }
