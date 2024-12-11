@@ -1,23 +1,20 @@
-#include "lcd_1602_4.h"      // LCD显示
+#include "lcd_1602_4.h"  // LCD显示
 #include "dht_11.h"          // 温湿度
 #include "kq_2801.h"         // TVOC指数
-#include "hc_sr04.h"         // 超声波距离
-#include "hc_sr501.h"        // 红外人体感应
-#include "buzzer_active.h"   // 有源蜂鸣器
-#include "buzzer_passive.h"  // 无源蜂鸣器
 
 // 工具实例
 
 // 【四位接法】
-// 显示屏背面：1->GND、2->VCC(3.3V)、3->D6、4->D7、5->D8、6->D9、7->D10、8->D11、9->D12、10->电阻110Ω->GND、11->VCC(5V)、12->GND
+// 显示屏背面：1->GND、2->VCC(3.3V)、3->D6、4->D7、5->D8、6->D9
+// 显示屏正面：1->GND、2->VCC(5V)、3->电阻110Ω->GND、4->D12、5->D11、6->D10、7->D10
 int DB[4] = { 6, 7, 8, 9 };
 LCD_1602_4 LCD(12, 11, 10, DB);
 
 // 镂空面：1->VCC(5V)、2->D?、3->留空、4->GND
-DHT_11 DHT(2);
+DHT_11 DHT(13);
 
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
-KQ_2801 KQ(A0, 13);
+KQ_2801 KQ(A0, 5);
 
 // 元器件面（针脚在下方）：1->VCC(5V)、2->A?、3->GND
 HC_SR04 SR04(5, 4);
@@ -37,9 +34,9 @@ void setup() {
   // 工具初始化
   LCD.Init();
   KQ.Init();
-  SR501.Init();
-  BA.Init();
-  BP.Init();
+  // SR501.Init();
+  // BA.Init();
+  // BP.Init();
 
   delay(1000);
 
@@ -56,10 +53,10 @@ void setup() {
   LCD.Clear();
   LCD.Write_String((int)((16 - strlen(title3)) / 2), 0, title3);  //第0行，第4个地址起
 
+  delay(1000);
+
   // 清屏
   LCD.Clear();
-
-  delay(100);
 }
 
 // 执行次数
@@ -69,6 +66,10 @@ long timer = 0;
 
 // 执行逻辑
 void process(char distanceStr[]) {
+  if (n < 5) {
+    LCD.Init();
+  }
+
   // 读数
   DHT.Read();
   KQ.Read();
@@ -79,11 +80,10 @@ void process(char distanceStr[]) {
   strcat(line1, "TVOC:");
   char percentageStr[4] = "";
   itoa(KQ.percentage, percentageStr, 10);
+  strcat(line1, percentageStr);
+  strcat(line1, "%");
   if (KQ.is_warm_up) {
-    strcat(line1, "Wait");
-  } else {
-    strcat(line1, percentageStr);
-    strcat(line1, "%");
+    strcat(line1, "W");
   }
 
   LCD.Clear_Line(0);
@@ -145,40 +145,41 @@ void loop() {
   timer++;
 
   // 读数
-  SR04.Read();
-  SR501.Read();
+  // SR04.Read();
+  // SR501.Read();
 
   // 距离小于20cm，有源蜂鸣器响一下
-  if (SR04.distance < 20) {
-    BP.Sound(100, 2, 6);
-  }
+  // if (SR04.distance < 20) {
+  //   BP.Sound(100, 2, 6);
+  // }
 
   // 有源蜂鸣器：重置
-  BA.Off();
+  // BA.Off();
 
   // LCD显示内容
   char distanceStr[5] = "";
-  itoa(SR04.distance, distanceStr, 10);
-  strcat(distanceStr, "cm");
+  // itoa(SR04.distance, distanceStr, 10);
+  // strcat(distanceStr, "cm");
 
   // 每秒（大约）执行一次
-  if (timer > 20) {
+  if (timer > 20 * 500) {
     // 重新计数
     timer = 0;
     // 累计执行次数
     n++;
     // 有人/无人
-    if (SR501.active) {
-      // 有人，补充LCD显示内容
-      char activeStr[6] = "P";
-      strcat(activeStr, distanceStr);
+    // if (SR501.active) {
+    //   // 有人，补充LCD显示内容
+    //   char activeStr[6] = "P";
+    //   strcat(activeStr, distanceStr);
 
-      process(activeStr);
+    //   process(activeStr);
 
-      // 有源蜂鸣器：响一下
-      BA.On();
-    } else {
-      process(distanceStr);
-    }
+    //   // 有源蜂鸣器：响一下
+    //   BA.On();
+    // } else {
+    //   process(distanceStr);
+    // }
+    process(distanceStr);
   }
 }
