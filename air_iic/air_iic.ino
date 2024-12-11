@@ -87,13 +87,24 @@ void printTempHum() {
 
   char temperatureStr[4] = "";
   char humidityStr[4] = "";
+
   itoa(DHT.temperature, temperatureStr, 10);
   itoa(DHT.humidity, humidityStr, 10);
   strcat(line, "Tem:");
   strcat(line, temperatureStr);
-  strcat(line, "C  Hum:");
+  strcat(line, " C");
+
+  // 左右贴边，补充空格
+  for (int i = 0; i < 16 - (4 + strlen(temperatureStr) + 2) - (4 + strlen(humidityStr) + 1); i++) {
+    strcat(line, " ");
+  }
+
+  strcat(line, "Hum:");
   strcat(line, humidityStr);
   strcat(line, "%");
+
+  int pos = strlen(temperatureStr) + 4;
+  line[pos] = 0xdf;
 
   char display[16] = "                ";
   int i = 0;
