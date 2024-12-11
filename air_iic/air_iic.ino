@@ -48,7 +48,7 @@ void setup() {
 // 执行次数
 long n = 0;
 // 阈值
-long at = 500000;
+long at = 100000;
 // 帧计数
 long timer = at;
 
@@ -62,7 +62,8 @@ void printTVOC() {
   strcat(line, "%");
 
   if (KQ.is_warm_up) {
-    char subfix[] = "Warming";
+    char subfix[] = "";
+    itoa(KQ.warm_up_seconds - KQ.read_times, subfix, 10);
     for (int i = strlen(line); i < 16 - strlen(subfix); i++) {
       strcat(line, " ");
     }

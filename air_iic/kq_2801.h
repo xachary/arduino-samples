@@ -4,7 +4,6 @@ class KQ_2801 {
 private:
   int _read_sample_interval = 50;
   int _read_sample_times = 5;
-  int _warm_up_seconds = 300; // 预热300次
   int _start_catch = 10; // 丢弃前10次采样
 
   float _sum_voltage_air = 0;
@@ -26,6 +25,7 @@ public:
   float voltage_current = 0;
   float resistance_current = 0;
 
+  int warm_up_seconds = 300; // 预热300次
   int read_times = 0;
   bool is_warm_up = true;
 
@@ -58,7 +58,7 @@ public:
     float v = Read_Voltage();
     int r = Read_Resistance(v);
 
-    if (read_times < _warm_up_seconds) {
+    if (read_times < warm_up_seconds) {
       if (read_times > _start_catch) {
         _sum_voltage_air += v;
         voltage_air = _sum_voltage_air / (read_times - _start_catch);
