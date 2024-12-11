@@ -11,13 +11,21 @@
 LiquidCrystal_I2C LCD(0x27, 16, 2);
 
 // 镂空面：1->VCC(5V)、2->D?、3->留空、4->GND
-DHT_11 DHT(13);
+DHT_11 DHT(12);
 
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
 KQ_2801 KQ(A0, 5);
 
+int btnPin = 2;
+
 void setup() {
   Serial.begin(9600);  //UART setup, baudrate = 9600bps
+
+  // 关掉主板的灯L
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
+
+  pinMode(btnPin, INPUT);
 
   // 工具初始化
   KQ.Init();
@@ -126,8 +134,28 @@ void process() {
   }
 }
 
+bool lightOn = true;
+bool btnClick = false;
+
 // 帧
 void loop() {
+  // Click 判断
+  int btnOn = digitalRead(btnPin);
+  if (!btnClick && btnOn == HIGH) {
+    btnClick = true;
+    // 切换状态
+    lightOn = !lightOn;
+
+    // 开关灯
+    if (lightOn) {
+      LCD.backlight();
+    } else {
+      LCD.noBacklight();
+    }
+  } else if (btnOn == LOW) {
+    btnClick = false;
+  }
+
   // 计数
   timer++;
 
