@@ -21,12 +21,14 @@ DHT_11 dht_11(4);
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
 KQ_2801 kq_2801(A0, 5);
 
-// WZ-S甲醛传感器
+// 甲醛传感器(WZ-S)
+// 接口：5V->VCC(5V)、G->GND、R->RX、T->TX
 SoftwareSerial Serial_WZ(2, 3);
 WZ wz(Serial_WZ);
 WZ::DATA hcho_data;
 
-// PM传感器
+// PM传感器(fs00905)
+// 转接板：红->VCC(5V)、绿->RX、黄->TX(可不接)、黑->GND
 SoftwareSerial Serial_PM(7, 6);
 int pm_buffer_len = 40;
 byte pm_buffer[40] = {};
