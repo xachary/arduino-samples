@@ -51,7 +51,6 @@ void setup() {
 
   // WZ-S甲醛传感器
   Serial_WZ.begin(9600);
-  // wz.activeMode();  // 主动推送
   wz.passiveMode();  // 被动
 
   // PM传感器
@@ -124,7 +123,7 @@ void printTime() {
   Serial.println(str);
 }
 
-void printPower3(char* str, int left, int top) {
+int printPower3(char* str, int left, int top) {
   // 绘制立方"³"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -141,9 +140,11 @@ void printPower3(char* str, int left, int top) {
   // js转换示例：parseInt('00011111',2) -> (31).toString(16) -> 1f
   uint8_t buffer[3] = { 0x15, 0x15, 0x1F };
   ssd1306_drawBuffer(left, top, 3, 8, buffer);
+
+  return 4;
 }
 
-void printDeg(char* str, int left, int top) {
+int printDeg(char* str, int left, int top) {
   // 绘制"°"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -156,46 +157,46 @@ void printDeg(char* str, int left, int top) {
   // 0 1 0
   uint8_t buffer[3] = { 0x02, 0x05, 0x02 };
   ssd1306_drawBuffer(left, top, 3, 8, buffer);
-  // ssd1306_fillRect(left, top * SCREEN_LINE_HEIGHT, left + 1, top * SCREEN_LINE_HEIGHT + 1);
+
+  return 4;
 }
 
-void printTVOC() {
+void clearBlock(int left, int right, int top) {
+  ssd1306_clearBlock(left, top, SCREEN_WIDTH - left - right, SCREEN_LINE_HEIGHT);
+}
+
+int printTVOC(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "TVOC:");
 
+  char percentageStr[SCREEN_WIDTH] = "";
   if (kq_2801.is_warm_up) {
-    char subfix[SCREEN_WIDTH] =  "";
-    itoa(kq_2801.warm_up_seconds - kq_2801.read_times, subfix, 10);
-    strcat(str, subfix);
+    itoa(kq_2801.warm_up_seconds - kq_2801.read_times, percentageStr, 10);
   } else {
-    char percentageStr[4] = "";
     itoa(kq_2801.percentage, percentageStr, 10);
-    strcat(str, percentageStr);
+  }
+
+  strcat(str, percentageStr);
+
+  if (kq_2801.is_warm_up) {
+    strcat(str, "s");
+
+  } else {
     strcat(str, "%");
   }
 
-  //设置光标位置
-  print(str, 0, 2);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printHCHO_PPB(int value) {
-  char str[SCREEN_WIDTH] = "";
-  strcat(str, "HCHO:");
-
-  int num = value;
-  char numStr[SCREEN_WIDTH] =  "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "ppb");
-
-  print(str, 0, 4);
-
-  Serial.println(str);
-}
-
-void printHCHO_UGM3(int value) {
+int printHCHO_UGM3(int value, int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "HCHO:");
 
@@ -203,132 +204,179 @@ void printHCHO_UGM3(int value) {
   if (num > 1000) {
     num = 0;
   }
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "ug/m");
 
-  print(str, 0, 3);
-
-  int w = ssd1306_getTextSize(str, 0) + 1;
-  printPower3(str, w, 3);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  int w = ssd1306_getTextSize(str, 0) + 1;
+
+  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
 }
 
-void printCO2() {
+int printCO2(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "CO2:");
 
   int num = 9999;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "ppm");
 
-  print(str, 0, 4);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printTemp() {
+int printTemp(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "Temp:");
 
   int num = dht_11.temperature;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
 
   strcat(str, " C");
 
-  printRight(str, 2);
-
   int w = ssd1306_getTextSize("C", 0) + 1;
-  printDeg(str, SCREEN_WIDTH - w - 3, 2);
+
+  if (isRight) {
+    printRight(str, row);
+
+    printDeg(str, SCREEN_WIDTH - w - 3, row);
+  } else {
+    print(str, 0, row);
+
+    printDeg(str, w - 3, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printHum() {
+int printHum(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "Hum:");
 
   int num = dht_11.humidity;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "%");
 
-  printRight(str, 3);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printUV() {
+int printUV(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "UV:");
 
   int num = 9999;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
 
-  printRight(str, 4);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printPM1() {
+int printPM1(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM1:");
 
   int num = pm1_data;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "ug/m");
 
-  print(str, 0, 5);
-
-  int w = ssd1306_getTextSize(str, 0) + 1;
-  printPower3(str, w, 5);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  int w = ssd1306_getTextSize(str, 0) + 1;
+
+  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
 }
-void printPM2_5() {
+int printPM2_5(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM2.5:");
 
   int num = pm2_5_data;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "ug/m");
 
-  print(str, 0, 6);
-
-  int w = ssd1306_getTextSize(str, 0) + 1;
-  printPower3(str, w, 6);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  int w = ssd1306_getTextSize(str, 0) + 1;
+
+  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
 }
-void printPM10() {
+int printPM10(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM10:");
 
   int num = pm10_data;
-  char numStr[SCREEN_WIDTH] =  "";
+  char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
   strcat(str, "ug/m");
 
-  print(str, 0, 7);
-
-  int w = ssd1306_getTextSize(str, 0) + 1;
-  printPower3(str, w, 7);
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  int w = ssd1306_getTextSize(str, 0) + 1;
+
+  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
 }
 
 int WZ_Read_Passive_PPB() {
@@ -437,15 +485,12 @@ void process() {
   printTime();
   printTitle();
 
-  printTVOC();
-  printHCHO_UGM3(hcho_UGM3);
-  printCO2();
-  printPM1();
-  printPM2_5();
-  printPM10();
-  printTemp();
-  printHum();
-  printUV();
+  clearBlock(printTVOC(2, false), printTemp(2, true), 2);
+  clearBlock(printHCHO_UGM3(hcho_UGM3, 3, false), printHum(3, true), 3);
+  clearBlock(printCO2(4, false), printUV(4, true), 4);
+  clearBlock(printPM1(5, false), 0, 5);
+  clearBlock(printPM2_5(6, false), 0, 6);
+  clearBlock(printPM10(7, false), 0, 7);
 
   // 串口日志
   Serial.print(kq_2801.resistance_current);
