@@ -1,13 +1,20 @@
+#include <SoftwareSerial.h>
 #include <Wire.h>
+
 // OLED 0.96 库
 #include <ssd1306.h>
 
 // WZ-S 甲醛传感器
 #include "WZ.h"
-#include <SoftwareSerial.h>
 
-#include "dht_11.h"   // 温湿度
-#include "kq_2801.h"  // TVOC指数
+// 温湿度
+#include "dht_11.h"
+
+// TVOC指数
+#include "kq_2801.h"
+
+// 时钟
+#include <RTClib.h>
 
 // OLED 0.96
 #define SCREEN_WIDTH 128      // 设置OLED宽度,单位:像素
@@ -20,6 +27,9 @@ DHT_11 dht_11(4);
 
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
 KQ_2801 kq_2801(A0, 5);
+
+// 接口：VCC->VCC(5V)、GND->GND、CLK->D8、DAT->D9、RST-D10
+DS1302 rtc(10, 8, 9);
 
 // 甲醛传感器(WZ-S)
 // 接口：5V->VCC(5V)、G->GND、R->RX、T->TX
@@ -48,6 +58,15 @@ void setup() {
 
   // TVOC传感器
   kq_2801.Init();
+
+  // 时钟初始化
+  rtc.begin();
+  // 更新时间
+  DateTime now = rtc.now();
+  DateTime cNow = DateTime(__DATE__, __TIME__);
+  if (now < cNow) {
+    rtc.adjust(cNow);
+  }
 
   // WZ-S甲醛传感器
   Serial_WZ.begin(9600);
@@ -91,36 +110,48 @@ void printTitle() {
   ssd1306_printFixedN(SCREEN_WIDTH - w, 0, str, STYLE_NORMAL, 1);
 }
 
-void printDate() {
-  char str[SCREEN_WIDTH] = "20??-??-??\0";
+int printDate(int row, bool isRight) {
+  char str[SCREEN_WIDTH] = "";
 
-  // int num = n % 30;
-  // char numStr[2] = "";
-  // itoa(num, numStr, 10);
-  // if (num < 10) {
-  //   strcat(str, "0");
-  // }
-  // strcat(str, numStr);
+  char date[SCREEN_WIDTH] = "";
 
-  print(str, 0, 0);
+  DateTime now = rtc.now();
+  Serial.print("Read:");
+  Serial.println(now.tostr(date));
+
+  strncpy(str, date, 10);
+
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
-void printTime() {
-  char str[SCREEN_WIDTH] = "??:??:??\0";
+int printTime(int row, bool isRight) {
+  char str[SCREEN_WIDTH] = "";
 
-  // int num = n % 60;
-  // char numStr[2] = "";
-  // itoa(num, numStr, 10);
-  // if (num < 10) {
-  //   strcat(str, "0");
-  // }
-  // strcat(str, numStr);
+  char time[SCREEN_WIDTH] = "";
 
-  print(str, 0, 1);
+  DateTime now = rtc.now();
+  Serial.print("Read:");
+  Serial.println(now.tostr(time));
+
+  strncpy(str, time + 11, 8);
+
+  if (isRight) {
+    printRight(str, row);
+  } else {
+    print(str, 0, row);
+  }
 
   Serial.println(str);
+
+  return ssd1306_getTextSize(str, 0);
 }
 
 int printPower3(char* str, int left, int top) {
@@ -474,17 +505,15 @@ void process() {
 
   Serial_WZ.listen();
   int hcho_UGM3 = WZ_Read_Active_UGM3();
-  // int hcho_PPB = WZ_Read_Passive_PPB();
 
   Serial.println("");
   Serial.print(n);
   Serial.println("秒");
 
   // LCD显示内容
-  printDate();
-  printTime();
   printTitle();
-
+  clearBlock(printDate(0, false), SCREEN_WIDTH / 2, 0);
+  clearBlock(printTime(1, false), SCREEN_WIDTH / 2, 1);
   clearBlock(printTVOC(2, false), printTemp(2, true), 2);
   clearBlock(printHCHO_UGM3(hcho_UGM3, 3, false), printHum(3, true), 3);
   clearBlock(printCO2(4, false), printUV(4, true), 4);
