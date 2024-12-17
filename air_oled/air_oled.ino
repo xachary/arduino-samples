@@ -1,6 +1,8 @@
 #include <SoftwareSerial.h>
 #include <Wire.h>
 
+#include "iic_scan.h"
+
 // OLED 0.96 库
 #include <ssd1306.h>
 
@@ -12,43 +14,62 @@
 
 // TVOC指数
 #include "kq_2801.h"
+#include "Adafruit_CCS811.h"
+
+// 紫外线指数
+#include "guva_s12sd.h"
 
 // 时钟
 #include <RTClib.h>
 
 // OLED 0.96
+// 接口：GND->GND、VDD->VCC(5V)、SCK->SCK/A5、SDA->SDA/A4
+// iis地址：0x3C
 #define SCREEN_WIDTH 128      // 设置OLED宽度,单位:像素
 #define SCREEN_LINE_HEIGHT 8  // 设置OLED宽度,单位:像素
 
 // 工具实例
 
+// 温湿度
 // 镂空面：1->VCC(5V)、2->D?、3->留空、4->GND
-DHT_11 dht_11(4);
+// DHT_11 dht_11(4);
 
+// TVOC指数
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
-KQ_2801 kq_2801(A0, 5);
+// KQ_2801 kq_2801(A0, 5);
+
+// 紫外线指数
+// 接口：VCC->VCC(5V)、GND->GND、SIO->A1
+GUVA_S12SD guva_s12sd(A1);
+// 接口：VCC->VCC(5V)、GND->GND、SCL->A5、SDA->A4、WAK->GND
+// iis地址：0x5A
+Adafruit_CCS811 ccs_811;
 
 // 接口：VCC->VCC(5V)、GND->GND、CLK->D8、DAT->D9、RST-D10
 DS1302 rtc(10, 8, 9);
 
 // 甲醛传感器(WZ-S)
 // 接口：5V->VCC(5V)、G->GND、R->RX、T->TX
-SoftwareSerial Serial_WZ(2, 3);
-WZ wz(Serial_WZ);
-WZ::DATA hcho_data;
+// SoftwareSerial Serial_WZ(2, 3);
+// WZ wz(Serial_WZ);
+// WZ::DATA hcho_data;
 
 // PM传感器(fs00905)
 // 转接板：红->VCC(5V)、绿->RX、黄->TX(可不接)、黑->GND
-SoftwareSerial Serial_PM(7, 6);
-int pm_buffer_len = 40;
-byte pm_buffer[40] = {};
-bool pm_buffer_done = false;
-int pm1_data = 0;
-int pm2_5_data = 0;
-int pm10_data = 0;
+// SoftwareSerial Serial_PM(7, 6);
+// int pm_buffer_len = 40;
+// byte pm_buffer[40] = {};
+// bool pm_buffer_done = false;
+// int pm1_data = 0;
+// int pm2_5_data = 0;
+// int pm10_data = 0;
 
 void setup() {
   Serial.begin(9600);
+
+  // // 扫描 iic 设备地址
+  // IIC_Scan();
+  // delay(5000);
 
   // 关掉主板的灯L
   pinMode(13, OUTPUT);
@@ -57,23 +78,31 @@ void setup() {
   // 工具初始化
 
   // TVOC传感器
-  kq_2801.Init();
+  // kq_2801.Init();
+  ccs_811.begin();
 
   // 时钟初始化
   rtc.begin();
   // 更新时间
   DateTime now = rtc.now();
   DateTime cNow = DateTime(__DATE__, __TIME__);
-  if (now < cNow) {
+  if (!(now.year() > cNow.year()
+        || now.month() > cNow.month()
+        || now.day() > cNow.day()
+        || now.hour() > cNow.hour()
+        || now.minute() > cNow.minute()
+        || now.second() > cNow.second())) {
     rtc.adjust(cNow);
   }
 
+  delay(500);
+
   // WZ-S甲醛传感器
-  Serial_WZ.begin(9600);
-  wz.passiveMode();  // 被动
+  // Serial_WZ.begin(9600);
+  // wz.passiveMode();  // 被动
 
   // PM传感器
-  Serial_PM.begin(9600);
+  // Serial_PM.begin(9600);
 
   // 初始化OLED
   ssd1306_128x64_i2c_init();
@@ -200,21 +229,24 @@ int printTVOC(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "TVOC:");
 
-  char percentageStr[SCREEN_WIDTH] = "";
-  if (kq_2801.is_warm_up) {
-    itoa(kq_2801.warm_up_seconds - kq_2801.read_times, percentageStr, 10);
-  } else {
-    itoa(kq_2801.percentage, percentageStr, 10);
-  }
+  // if (kq_2801.is_warm_up) {
+  //   itoa(kq_2801.warm_up_seconds - kq_2801.read_times, percentageStr, 10);
+  // } else {
+  //   itoa(kq_2801.percentage, percentageStr, 10);
+  // }
 
-  strcat(str, percentageStr);
+  // strcat(str, percentageStr);
 
-  if (kq_2801.is_warm_up) {
-    strcat(str, "s");
+  // if (kq_2801.is_warm_up) {
+  //   strcat(str, "s");
+  // } else {
+  //   strcat(str, "%");
+  // }
 
-  } else {
-    strcat(str, "%");
-  }
+  char numStr[SCREEN_WIDTH] = "";
+  int value = TVOC_Read();
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
 
   if (isRight) {
     printRight(str, row);
@@ -231,20 +263,20 @@ int printHCHO_UGM3(int value, int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "HCHO:");
 
-  int num = value;
-  if (num > 1000) {
-    num = 0;
-  }
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "ug/m");
+  // int num = value;
+  // if (num > 1000) {
+  //   num = 0;
+  // }
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
+  // strcat(str, "ug/m");
 
-  if (isRight) {
-    printRight(str, row);
-  } else {
-    print(str, 0, row);
-  }
+  // if (isRight) {
+  //   printRight(str, row);
+  // } else {
+  //   print(str, 0, row);
+  // }
 
   Serial.println(str);
 
@@ -257,7 +289,7 @@ int printCO2(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "CO2:");
 
-  int num = 9999;
+  int num = CO2_Read();
   char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
@@ -278,24 +310,24 @@ int printTemp(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "Temp:");
 
-  int num = dht_11.temperature;
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
+  // int num = dht_11.temperature;
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
 
-  strcat(str, " C");
+  // strcat(str, " C");
 
-  int w = ssd1306_getTextSize("C", 0) + 1;
+  // int w = ssd1306_getTextSize("C", 0) + 1;
 
-  if (isRight) {
-    printRight(str, row);
+  // if (isRight) {
+  //   printRight(str, row);
 
-    printDeg(str, SCREEN_WIDTH - w - 3, row);
-  } else {
-    print(str, 0, row);
+  //   printDeg(str, SCREEN_WIDTH - w - 3, row);
+  // } else {
+  //   print(str, 0, row);
 
-    printDeg(str, w - 3, row);
-  }
+  //   printDeg(str, w - 3, row);
+  // }
 
   Serial.println(str);
 
@@ -306,17 +338,17 @@ int printHum(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "Hum:");
 
-  int num = dht_11.humidity;
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "%");
+  // int num = dht_11.humidity;
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
+  // strcat(str, "%");
 
-  if (isRight) {
-    printRight(str, row);
-  } else {
-    print(str, 0, row);
-  }
+  // if (isRight) {
+  //   printRight(str, row);
+  // } else {
+  //   print(str, 0, row);
+  // }
 
   Serial.println(str);
 
@@ -327,7 +359,7 @@ int printUV(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "UV:");
 
-  int num = 9999;
+  int num = guva_s12sd.value;
   char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
@@ -347,17 +379,17 @@ int printPM1(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM1:");
 
-  int num = pm1_data;
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "ug/m");
+  // int num = pm1_data;
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
+  // strcat(str, "ug/m");
 
-  if (isRight) {
-    printRight(str, row);
-  } else {
-    print(str, 0, row);
-  }
+  // if (isRight) {
+  //   printRight(str, row);
+  // } else {
+  //   print(str, 0, row);
+  // }
 
   Serial.println(str);
 
@@ -369,17 +401,17 @@ int printPM2_5(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM2.5:");
 
-  int num = pm2_5_data;
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "ug/m");
+  // int num = pm2_5_data;
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
+  // strcat(str, "ug/m");
 
-  if (isRight) {
-    printRight(str, row);
-  } else {
-    print(str, 0, row);
-  }
+  // if (isRight) {
+  //   printRight(str, row);
+  // } else {
+  //   print(str, 0, row);
+  // }
 
   Serial.println(str);
 
@@ -391,17 +423,17 @@ int printPM10(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "PM10:");
 
-  int num = pm10_data;
-  char numStr[SCREEN_WIDTH] = "";
-  itoa(num, numStr, 10);
-  strcat(str, numStr);
-  strcat(str, "ug/m");
+  // int num = pm10_data;
+  // char numStr[SCREEN_WIDTH] = "";
+  // itoa(num, numStr, 10);
+  // strcat(str, numStr);
+  // strcat(str, "ug/m");
 
-  if (isRight) {
-    printRight(str, row);
-  } else {
-    print(str, 0, row);
-  }
+  // if (isRight) {
+  //   printRight(str, row);
+  // } else {
+  //   print(str, 0, row);
+  // }
 
   Serial.println(str);
 
@@ -411,17 +443,17 @@ int printPM10(int row, bool isRight) {
 }
 
 int WZ_Read_Passive_PPB() {
-  if (wz.read(hcho_data)) {
-    return hcho_data.HCHO_PPB;
-  }
+  // if (wz.read(hcho_data)) {
+  //   return hcho_data.HCHO_PPB;
+  // }
   return 0;
 }
 
 int WZ_Read_Active_UGM3() {
-  wz.requestRead();
-  if (wz.readUntil(hcho_data)) {
-    return hcho_data.HCHO_UGM3;
-  }
+  // wz.requestRead();
+  // if (wz.readUntil(hcho_data)) {
+  //   return hcho_data.HCHO_UGM3;
+  // }
   return 0;
 }
 
@@ -434,81 +466,106 @@ void PM_Calc() {
   byte byte_val = 0x00;
   byte last_byte_val = 0x00;
 
-  while (flag_end == false) {
-    if (Serial_PM.available() > 0) {
-      char int_val = (char)Serial_PM.read();
-      byte_val = (byte)int_val;
+  // while (flag_end == false) {
+  //   if (Serial_PM.available() > 0) {
+  //     char int_val = (char)Serial_PM.read();
+  //     byte_val = (byte)int_val;
 
-      pm_buffer[count] = byte_val;
+  //     pm_buffer[count] = byte_val;
 
-      if (pm_buffer[count] == 0x4d && last_byte_val == 0x42) {
-        pm_buffer[0] = 0x42;
-        count = 1;
-        flag_start = true;
-      }
-      last_byte_val = byte_val;
+  //     if (pm_buffer[count] == 0x4d && last_byte_val == 0x42) {
+  //       pm_buffer[0] = 0x42;
+  //       count = 1;
+  //       flag_start = true;
+  //     }
+  //     last_byte_val = byte_val;
 
-      count++;
+  //     count++;
 
-      if (flag_start) {
-        if (count >= pm_buffer_len) {
-          count = 0;
-          int sum = 0;
-          for (int i = 0; i < pm_buffer_len - 2; i++) {
-            sum += pm_buffer[i];
-          }
+  //     if (flag_start) {
+  //       if (count >= pm_buffer_len) {
+  //         count = 0;
+  //         int sum = 0;
+  //         for (int i = 0; i < pm_buffer_len - 2; i++) {
+  //           sum += pm_buffer[i];
+  //         }
 
-          int check = pm_buffer[pm_buffer_len - 2] * 256 + pm_buffer[pm_buffer_len - 1];
+  //         int check = pm_buffer[pm_buffer_len - 2] * 256 + pm_buffer[pm_buffer_len - 1];
 
-          if (sum == check) {
-            pm_buffer_done = true;
-            flag_end = true;
-          } else {
-            Serial.println("<<<<<start<<<<<");
-            for (int i = 0; i < pm_buffer_len; i++) {
-              Serial.print(pm_buffer[i], HEX);
-              Serial.print(",");
-            }
-            Serial.println("");
-            Serial.print("sum:");
-            Serial.println(sum);
-            Serial.print("check:");
-            Serial.println(check);
-            Serial.println(">>>>>error>>>>>");
-          }
-        }
-      }
-    }
-  }
+  //         if (sum == check) {
+  //           pm_buffer_done = true;
+  //           flag_end = true;
+  //         } else {
+  //           Serial.println("<<<<<start<<<<<");
+  //           for (int i = 0; i < pm_buffer_len; i++) {
+  //             Serial.print(pm_buffer[i], HEX);
+  //             Serial.print(",");
+  //           }
+  //           Serial.println("");
+  //           Serial.print("sum:");
+  //           Serial.println(sum);
+  //           Serial.print("check:");
+  //           Serial.println(check);
+  //           Serial.println(">>>>>error>>>>>");
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 void PM_Read() {
-  if (Serial_PM.isListening()) {
-    while (pm_buffer_done == false)  //等待数据接收一帧完整
-    {
-      PM_Calc();
-    }
-    pm_buffer_done = false;
+  // if (Serial_PM.isListening()) {
+  //   while (pm_buffer_done == false)  //等待数据接收一帧完整
+  //   {
+  //     PM_Calc();
+  //   }
+  //   pm_buffer_done = false;
 
-    pm1_data = pm_buffer[10] * 256 + pm_buffer[11];
-    pm2_5_data = pm_buffer[12] * 256 + pm_buffer[13];
-    pm10_data = pm_buffer[14] * 256 + pm_buffer[15];
+  //   pm1_data = pm_buffer[10] * 256 + pm_buffer[11];
+  //   pm2_5_data = pm_buffer[12] * 256 + pm_buffer[13];
+  //   pm10_data = pm_buffer[14] * 256 + pm_buffer[15];
+  // }
+}
+
+int TVOC_Read() {
+  int value = 0;
+  int timeout = 0;
+  while (!ccs_811.available() && timeout < 10000) timeout++;
+  if (ccs_811.available()) {
+    if (!ccs_811.readData()) {
+      value = ccs_811.getTVOC();
+    }
   }
+  return value;
+}
+
+int CO2_Read() {
+  int value = 0;
+  int timeout = 0;
+  while (!ccs_811.available() && timeout < 10000) timeout++;
+  if (ccs_811.available()) {
+    if (!ccs_811.readData()) {
+      value = ccs_811.geteCO2();
+    }
+  }
+  return value;
 }
 
 // 执行逻辑
 void process() {
   // 读数
 
-  dht_11.Read();
-  kq_2801.Read();
+  // dht_11.Read();
+  // kq_2801.Read();
+  guva_s12sd.Read();
 
-  Serial_WZ.listen();
+  // Serial_WZ.listen();
   int hcho_UGM3 = WZ_Read_Active_UGM3();
 
   Serial.println("");
   Serial.print(n);
-  Serial.println("秒");
+  Serial.println("次");
 
   // LCD显示内容
   printTitle();
@@ -522,15 +579,15 @@ void process() {
   clearBlock(printPM10(7, false), 0, 7);
 
   // 串口日志
-  Serial.print(kq_2801.resistance_current);
-  Serial.print("Ω/");
-  Serial.print(kq_2801.resistance_air);
-  if (kq_2801.is_warm_up) {
-    Serial.print("Ω");
-    Serial.println("（预热中）");
-  } else {
-    Serial.println("Ω");
-  }
+  // Serial.print(kq_2801.resistance_current);
+  // Serial.print("Ω/");
+  // Serial.print(kq_2801.resistance_air);
+  // if (kq_2801.is_warm_up) {
+  //   Serial.print("Ω");
+  //   Serial.println("（预热中）");
+  // } else {
+  //   Serial.println("Ω");
+  // }
 }
 
 bool lightOn = true;
@@ -563,7 +620,7 @@ void runWithTimer() {
 // 利用PM传感器每秒推送，作为按秒执行
 void runWithSerial() {
   // 利用PM传感器每秒推送作为停顿
-  Serial_PM.listen();
+  // Serial_PM.listen();
   PM_Read();
 
   n++;
@@ -575,4 +632,6 @@ void runWithSerial() {
 // 帧
 void loop() {
   runWithSerial();
+
+  delay(500);
 }
