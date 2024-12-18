@@ -14,7 +14,7 @@
 
 // TVOC指数
 #include "kq_2801.h"
-#include "Adafruit_CCS811.h"
+#include "ccs_811_soft_wire.h"
 
 // 紫外线指数
 #include "guva_s12sd.h"
@@ -43,7 +43,7 @@
 GUVA_S12SD guva_s12sd(A1);
 // 接口：VCC->VCC(5V)、GND->GND、SCL->A5、SDA->A4、WAK->GND
 // iis地址：0x5A
-Adafruit_CCS811 ccs_811;
+CCS811_SoftWire ccs_811(2, 3, 0x5A);
 
 // 接口：VCC->VCC(5V)、GND->GND、CLK->D8、DAT->D9、RST-D10
 DS1302 rtc(10, 8, 9);
@@ -64,12 +64,27 @@ DS1302 rtc(10, 8, 9);
 // int pm2_5_data = 0;
 // int pm10_data = 0;
 
+void ccs_811_begin() {
+  int ccs_811_timeout = 0;
+  while (ccs_811.begin() == false && ccs_811_timeout < 10000) {
+    ccs_811_timeout++;
+
+    delay(500);
+  }
+  if (ccs_811_timeout >= 10000) {
+    Serial.println("CCS811 error. Please check wiring.");
+  }
+}
+
 void setup() {
   Serial.begin(9600);
 
-  // // 扫描 iic 设备地址
-  // IIC_Scan();
-  // delay(5000);
+  Wire.begin();
+
+  // 清屏
+  for (int i = 0; i < 100; i++) {
+    Serial.print("\n");
+  }
 
   // 关掉主板的灯L
   pinMode(13, OUTPUT);
@@ -79,7 +94,7 @@ void setup() {
 
   // TVOC传感器
   // kq_2801.Init();
-  ccs_811.begin();
+  ccs_811_begin();
 
   // 时钟初始化
   rtc.begin();
@@ -529,26 +544,30 @@ void PM_Read() {
 }
 
 int TVOC_Read() {
+  int sensor_val[2];
   int value = 0;
+
   int timeout = 0;
-  while (!ccs_811.available() && timeout < 10000) timeout++;
-  if (ccs_811.available()) {
-    if (!ccs_811.readData()) {
-      value = ccs_811.getTVOC();
-    }
-  }
+  while (!ccs_811.checkStatus() && timeout < 10000) {
+    timeout++;
+    delay(500);
+  };
+  ccs_811.getAlgResultsData(sensor_val);
+  value = sensor_val[1];
   return value;
 }
 
 int CO2_Read() {
   int value = 0;
   int timeout = 0;
-  while (!ccs_811.available() && timeout < 10000) timeout++;
-  if (ccs_811.available()) {
-    if (!ccs_811.readData()) {
-      value = ccs_811.geteCO2();
-    }
-  }
+  // while (!ccs_811.dataAvailable() && timeout < 10000) {
+  //   timeout++;
+  //   delay(500);
+  // };
+  // if (ccs_811.dataAvailable()) {
+  //   ccs_811.readAlgorithmResults();
+  //   value = ccs_811.getCO2();
+  // }
   return value;
 }
 
