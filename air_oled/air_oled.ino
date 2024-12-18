@@ -12,6 +12,9 @@
 // 温湿度
 #include "dht_11.h"
 
+// 二氧化碳
+#include "mtp_40_f.h"
+
 // TVOC指数
 #include "kq_2801.h"
 #include "ccs_811_soft_wire.h"
@@ -33,6 +36,10 @@
 // 温湿度
 // 镂空面：1->VCC(5V)、2->D?、3->留空、4->GND
 // DHT_11 dht_11(4);
+
+// 二氧化碳
+// 接口：G+->VCC(5V)、G->GND、PWM->D3
+MTP_40_F mtp_40_f(3);
 
 // TVOC指数
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
@@ -91,6 +98,8 @@ void setup() {
   digitalWrite(13, LOW);
 
   // 工具初始化
+
+  mtp_40_f.Init();
 
   // TVOC传感器
   // kq_2801.Init();
@@ -304,7 +313,7 @@ int printCO2(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "CO2:");
 
-  int num = CO2_Read();
+  int num = mtp_40_f.value;
   char numStr[SCREEN_WIDTH] = "";
   itoa(num, numStr, 10);
   strcat(str, numStr);
@@ -557,20 +566,6 @@ int TVOC_Read() {
   return value;
 }
 
-int CO2_Read() {
-  int value = 0;
-  int timeout = 0;
-  // while (!ccs_811.dataAvailable() && timeout < 10000) {
-  //   timeout++;
-  //   delay(500);
-  // };
-  // if (ccs_811.dataAvailable()) {
-  //   ccs_811.readAlgorithmResults();
-  //   value = ccs_811.getCO2();
-  // }
-  return value;
-}
-
 // 执行逻辑
 void process() {
   // 读数
@@ -578,6 +573,7 @@ void process() {
   // dht_11.Read();
   // kq_2801.Read();
   guva_s12sd.Read();
+  mtp_40_f.Read();
 
   // Serial_WZ.listen();
   int hcho_UGM3 = WZ_Read_Active_UGM3();
