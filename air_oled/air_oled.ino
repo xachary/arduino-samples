@@ -16,7 +16,7 @@
 #include "mtp_40_f.h"
 
 // TVOC指数
-#include "kq_2801.h"
+// #include "kq_2801.h" // 需预热
 #include "ccs_811_soft_wire.h"
 
 // 紫外线指数
@@ -44,13 +44,13 @@ MTP_40_F mtp_40_f(3);
 // TVOC指数
 // 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
 // KQ_2801 kq_2801(A0, 5);
+// 接口：VCC->VCC(5V)、GND->GND、SCL->A5、SDA->A4、WAK->GND
+// iis地址：0x5A
+CCS811_SoftWire ccs_811(2, 3, 0x5A);
 
 // 紫外线指数
 // 接口：VCC->VCC(5V)、GND->GND、SIO->A1
 GUVA_S12SD guva_s12sd(A1);
-// 接口：VCC->VCC(5V)、GND->GND、SCL->A5、SDA->A4、WAK->GND
-// iis地址：0x5A
-CCS811_SoftWire ccs_811(2, 3, 0x5A);
 
 // 接口：VCC->VCC(5V)、GND->GND、CLK->D8、DAT->D9、RST-D10
 DS1302 rtc(10, 8, 9);

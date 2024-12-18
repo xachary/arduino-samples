@@ -1,5 +1,8 @@
 #include <Arduino.h>
 
+// 基于 https://github.com/RobTillaart/MTP40F/blob/master/examples/MTP40F_PWM_demo/MTP40F_PWM_demo.ino
+// 由于上面的示例，关于PWM计算，不符合文档下列所属，因此修改之。
+
 // 【PWM 功能详解】
 // PWM 的周期是 1004ms
 // 起始阶段高电平输出 2ms
@@ -43,6 +46,7 @@ public:
     value = DurationToPPM();
 
     // 量程 400ppm ~ 5000ppm
+    // 首次计算结果有可能是 65535，因此做一个判断修正。
     if (value > 10000) {
       value = 0;
     }

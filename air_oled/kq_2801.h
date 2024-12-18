@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+// 根据商家提供的文档及示例程序 6.Arduino (AO) 改写
+
 class KQ_2801 {
 private:
   int _read_sample_interval = 50;

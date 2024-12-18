@@ -2,6 +2,7 @@
 
 // 来源于网络示例
 // https://www.sohu.com/a/694634336_120248280
+
 class GUVA_S12SD {
 public:
   GUVA_S12SD(int p) {
