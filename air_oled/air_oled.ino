@@ -1,6 +1,8 @@
 #include <SoftwareSerial.h>
 #include <Wire.h>
 
+#include "units.h"
+
 #include "iic_scan.h"
 
 // OLED 0.96 库
@@ -16,7 +18,6 @@
 #include "mtp_40_f.h"
 
 // TVOC指数
-// #include "kq_2801.h" // 需预热
 #include "ccs_811_soft_wire.h"
 
 // 紫外线指数
@@ -42,8 +43,6 @@
 MTP_40_F mtp_40_f(3);
 
 // TVOC指数
-// 元器件面：1(AO)->A、2(DO)->D?、3(GND)->GND、4(VCC)->VCC(5V)
-// KQ_2801 kq_2801(A0, 5);
 // 接口：VCC->VCC(5V)、GND->GND、SCL->A5、SDA->A4、WAK->GND
 // iis地址：0x5A
 CCS811_SoftWire ccs_811(2, 3, 0x5A);
@@ -73,12 +72,10 @@ DS1302 rtc(10, 8, 9);
 
 void ccs_811_begin() {
   int ccs_811_timeout = 0;
-  while (ccs_811.begin() == false && ccs_811_timeout < 10000) {
+  while (ccs_811.begin() == false && ccs_811_timeout < 10) {
     ccs_811_timeout++;
-
-    delay(500);
   }
-  if (ccs_811_timeout >= 10000) {
+  if (ccs_811_timeout >= 10) {
     Serial.println("CCS811 error. Please check wiring.");
   }
 }
@@ -93,17 +90,20 @@ void setup() {
     Serial.print("\n");
   }
 
+  pinMode(11, INPUT_PULLUP);
+  pinMode(12, INPUT_PULLUP);
+  pinMode(13, OUTPUT);
+
   // 关掉主板的灯L
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
 
   // 工具初始化
 
-  mtp_40_f.Init();
+  // mtp_40_f.Init();
 
   // TVOC传感器
-  // kq_2801.Init();
-  ccs_811_begin();
+  // ccs_811_begin();
 
   // 时钟初始化
   rtc.begin();
@@ -207,7 +207,7 @@ int printTime(int row, bool isRight) {
   return ssd1306_getTextSize(str, 0);
 }
 
-int printPower3(char* str, int left, int top) {
+int printPower3(int left, int top) {
   // 绘制立方"³"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -228,7 +228,7 @@ int printPower3(char* str, int left, int top) {
   return 4;
 }
 
-int printDeg(char* str, int left, int top) {
+int printDeg(int left, int top) {
   // 绘制"°"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -252,20 +252,6 @@ void clearBlock(int left, int right, int top) {
 int printTVOC(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
   strcat(str, "TVOC:");
-
-  // if (kq_2801.is_warm_up) {
-  //   itoa(kq_2801.warm_up_seconds - kq_2801.read_times, percentageStr, 10);
-  // } else {
-  //   itoa(kq_2801.percentage, percentageStr, 10);
-  // }
-
-  // strcat(str, percentageStr);
-
-  // if (kq_2801.is_warm_up) {
-  //   strcat(str, "s");
-  // } else {
-  //   strcat(str, "%");
-  // }
 
   char numStr[SCREEN_WIDTH] = "";
   int value = TVOC_Read();
@@ -306,7 +292,7 @@ int printHCHO_UGM3(int value, int row, bool isRight) {
 
   int w = ssd1306_getTextSize(str, 0) + 1;
 
-  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
+  return ssd1306_getTextSize(str, 0) + printPower3(w, row);
 }
 
 int printCO2(int row, bool isRight) {
@@ -346,11 +332,11 @@ int printTemp(int row, bool isRight) {
   // if (isRight) {
   //   printRight(str, row);
 
-  //   printDeg(str, SCREEN_WIDTH - w - 3, row);
+  //   printDeg(SCREEN_WIDTH - w - 3, row);
   // } else {
   //   print(str, 0, row);
 
-  //   printDeg(str, w - 3, row);
+  //   printDeg(w - 3, row);
   // }
 
   Serial.println(str);
@@ -419,7 +405,7 @@ int printPM1(int row, bool isRight) {
 
   int w = ssd1306_getTextSize(str, 0) + 1;
 
-  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
+  return ssd1306_getTextSize(str, 0) + printPower3(w, row);
 }
 int printPM2_5(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
@@ -441,7 +427,7 @@ int printPM2_5(int row, bool isRight) {
 
   int w = ssd1306_getTextSize(str, 0) + 1;
 
-  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
+  return ssd1306_getTextSize(str, 0) + printPower3(w, row);
 }
 int printPM10(int row, bool isRight) {
   char str[SCREEN_WIDTH] = "";
@@ -463,7 +449,7 @@ int printPM10(int row, bool isRight) {
 
   int w = ssd1306_getTextSize(str, 0) + 1;
 
-  return ssd1306_getTextSize(str, 0) + printPower3(str, w, row);
+  return ssd1306_getTextSize(str, 0) + printPower3(w, row);
 }
 
 int WZ_Read_Passive_PPB() {
@@ -557,9 +543,8 @@ int TVOC_Read() {
   int value = 0;
 
   int timeout = 0;
-  while (!ccs_811.checkStatus() && timeout < 10000) {
+  while (!ccs_811.checkStatus() && timeout < 10) {
     timeout++;
-    delay(500);
   };
   ccs_811.getAlgResultsData(sensor_val);
   value = sensor_val[1];
@@ -571,7 +556,6 @@ void process() {
   // 读数
 
   // dht_11.Read();
-  // kq_2801.Read();
   guva_s12sd.Read();
   mtp_40_f.Read();
 
@@ -592,17 +576,6 @@ void process() {
   clearBlock(printPM1(5, false), 0, 5);
   clearBlock(printPM2_5(6, false), 0, 6);
   clearBlock(printPM10(7, false), 0, 7);
-
-  // 串口日志
-  // Serial.print(kq_2801.resistance_current);
-  // Serial.print("Ω/");
-  // Serial.print(kq_2801.resistance_air);
-  // if (kq_2801.is_warm_up) {
-  //   Serial.print("Ω");
-  //   Serial.println("（预热中）");
-  // } else {
-  //   Serial.println("Ω");
-  // }
 }
 
 bool lightOn = true;
@@ -644,9 +617,213 @@ void runWithSerial() {
   process();
 }
 
+Units::Mode mode = Units::Temp;
+
+int btn1Status = 0;
+int btn2Status = 0;
+
+int printChartName(int x, int y, Units::Mode m) {
+  char str[SCREEN_WIDTH] = "";
+  Units::getModeName(m, str);
+
+  strcat(str, "(");
+
+  ssd1306_printFixed(x, SCREEN_LINE_HEIGHT * y, str, STYLE_NORMAL);
+
+  return ssd1306_getTextSize(str, 0);
+}
+
+int printChartUnit(int x, int y, Units::Mode m) {
+  char str[SCREEN_WIDTH] = "";
+  Units::getUnit(m, str);
+
+  int w = ssd1306_getTextSize(str, 0);
+
+  switch (m) {
+    case Units::HCHO:
+    case Units::PM1:
+    case Units::PM2_5:
+    case Units::PM10:
+      strcat(str, " )");
+      break;
+    default: strcat(str, ")");
+  }
+
+
+  ssd1306_printFixed(x, SCREEN_LINE_HEIGHT * y, str, STYLE_NORMAL);
+
+  return w;
+}
+
+int printChartRange(int x, int y, int min, int max) {
+  char str[SCREEN_WIDTH] = "";
+  char minStr[SCREEN_WIDTH] = "";
+  char maxStr[SCREEN_WIDTH] = "";
+  itoa(min, minStr, 10);
+  itoa(max, maxStr, 10);
+
+  strcat(str, minStr);
+  strcat(str, "~");
+  strcat(str, maxStr);
+
+  ssd1306_printFixed(SCREEN_WIDTH - ssd1306_getTextSize(str, 0), SCREEN_LINE_HEIGHT * y, str, STYLE_NORMAL);
+
+  return ssd1306_getTextSize(str, 0);
+}
+
+void printChartTime(int y) {
+  char start[SCREEN_WIDTH] = "-23:00";
+  char end[SCREEN_WIDTH] = "+22:00";
+
+  ssd1306_printFixed(0, SCREEN_LINE_HEIGHT * y, start, STYLE_NORMAL);
+  ssd1306_printFixed(SCREEN_WIDTH - ssd1306_getTextSize(end, 0), SCREEN_LINE_HEIGHT * y, end, STYLE_NORMAL);
+}
+
+const int chartHeaderHeight = SCREEN_LINE_HEIGHT * 2;
+const int chartHeight = SCREEN_LINE_HEIGHT * 6;  // 最多定义6行
+const int chartCount = 24;      // 24小时内，每小时显示一个点
+
+int getX(int value) {
+  float p = value / (float)(chartCount - 1);
+  int r = floor(p * SCREEN_WIDTH);
+
+  if (r >= 128) {
+    r = 127;
+  }
+
+  return r;
+}
+
+int getY(int min, int max, int value) {
+  float width = max - min;
+  float v = value - min;
+  float p = v / width;
+  int r = floor(p * chartHeight - 2);  // 底部留2像素间隙
+
+  if (r <= 0) {
+    r = 1;
+  }
+
+  return chartHeight - r;
+}
+
+// 阶乘
+// long power2(int start, int time) {
+//   long res = start;
+//   for (int i = 1; i < time; i++) {
+//     res *= 2;
+//   }
+//   return res;
+// }
+
+void printLine(uint8_t* values) {
+  int min = 10000;
+  int max = -10000;
+  for (int x = 0; x < chartCount; x++) {
+    if (values[x] < min) {
+      min = values[x];
+    } else if (values[x] > max) {
+      max = values[x];
+    }
+  }
+
+  printChartRange(0, 0, min, max);
+
+  // 填满测试
+  // for (int y = 2; y < 8; y++) {
+  //   for (int x = 0; x < 128; x++) {
+  //     uint8_t buffer[1] = { 0xFF };
+  //     ssd1306_drawBuffer(x, y, 1, 8, buffer);
+  //   }
+  //   Serial.println();
+  // }
+
+  ssd1306_clearBlock(0, 2, SCREEN_WIDTH, SCREEN_LINE_HEIGHT * 6);
+
+  for (int x = 1; x < chartCount; x++) {
+    Serial.println();
+
+    int fx = getX(x - 1);
+    int fy = getY(min, max, values[x - 1]);
+
+    int tx = getX(x);
+    int ty = getY(min, max, values[x]);
+
+    ssd1306_drawLine(fx, fy + chartHeaderHeight, tx, ty + chartHeaderHeight);
+  }
+}
+
+void printChart(Units::Mode m) {
+  int w1 = printChartName(0, 0, m);
+  int w2 = printChartUnit(w1, 0, m);
+
+  switch (m) {
+    case Units::HCHO:
+    case Units::PM1:
+    case Units::PM2_5:
+    case Units::PM10:
+      printPower3(w1 + w2 + 1, 0);
+      break;
+    case Units::Temp:
+      printDeg(w1 + 3, 0);
+      break;
+  }
+
+  printChartTime(1);
+
+  uint8_t values[chartCount] = {};
+
+  for (int x = 0; x < chartCount; x++) {
+    values[x] = rand() % 10000;
+  }
+
+  printLine(values);
+}
+
 // 帧
 void loop() {
-  runWithSerial();
+  Serial.print("mode:");
+  Serial.println(mode);
+  if (!btn1Status && digitalRead(11) == LOW) {
+    btn1Status = 1;
+  }
 
-  delay(500);
+  if (btn1Status && digitalRead(11) == HIGH) {
+    btn1Status = 2;
+  }
+
+  if (!btn2Status && digitalRead(12) == LOW) {
+    btn2Status = 1;
+  }
+
+  if (btn2Status && digitalRead(12) == HIGH) {
+    btn2Status = 2;
+  }
+
+  if (btn1Status == 2) {
+    btn1Status = 0;
+
+    mode = mode + 1;
+    if (mode > Units::ModeLength - 1) {
+      mode = Units::Home + 1;
+    }
+
+    ssd1306_clearScreen();
+  }
+
+  if (btn2Status == 2) {
+    btn2Status = 0;
+
+    mode = Units::Home;
+
+    ssd1306_clearScreen();
+  }
+
+  if (mode == Units::Home) {
+    runWithSerial();
+  } else {
+    printChart(mode);
+  }
+
+  // delay(500);
 }
