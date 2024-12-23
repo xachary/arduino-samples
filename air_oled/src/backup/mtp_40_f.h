@@ -59,3 +59,4 @@ public:
     return 5000 * (float)(MTP_40_F_DURATION - 2) / (1004 - 4);
   }
 };
+ No newline at end of file
