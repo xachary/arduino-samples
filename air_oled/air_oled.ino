@@ -28,16 +28,18 @@ void setup() {
   Serial.begin(9600);
 
   // 清屏
-  for (int i = 0; i < 100; i++) {
+  for (unsigned int i = 0; i < 100; i++) {
     Serial.print("\n");
   }
-
-  Display::OLED.Init();
 
   Clock::RTC.Init();
 
   Module::CO2.Init();
   Module::PM.Init();
+
+  // 以下设备务必先连接
+
+  // Display::OLED.Init();
 
   // char sd_error[SSD_1306::SCREEN_WIDTH] = "";
   // if (!Storage::SD_Card.Init(10, sd_error)) {
@@ -53,11 +55,9 @@ void setup() {
 // 执行次数
 long n = 0;
 
-int btn1Status = 0;
-int btn2Status = 0;
 Modes::Mode mode = Modes::Home;
 
-int printPower3(int left, int top) {
+unsigned int printPower3(unsigned int left, unsigned int top) {
   // 绘制立方"³"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -78,7 +78,7 @@ int printPower3(int left, int top) {
   return 4;
 }
 
-int printDeg(int left, int top) {
+unsigned int printDeg(unsigned int left, unsigned int top) {
   // 绘制"°"符号
   // 位图方向：从左往右、从下往上
   // 0 0 0
@@ -98,24 +98,24 @@ int printDeg(int left, int top) {
 void printTitle() {
   char str[SSD_1306::SCREEN_WIDTH] = "[Air]";
 
-  int w = Display::OLED.getTextSize(str) * 2;
+  unsigned int w = Display::OLED.getTextSize(str) * 2;
 
   Display::OLED.printNRaw(SSD_1306::SCREEN_WIDTH - w, 0, str);
 }
 
-int printMem() {
+unsigned int printMem() {
   char str[SSD_1306::SCREEN_WIDTH] = "";
 
   strcat(str, "Mem");
 
-  int w = Display::OLED.getTextSize(str);
+  unsigned int w = Display::OLED.getTextSize(str);
 
   Display::OLED.printRaw(SSD_1306::SCREEN_WIDTH - w, SSD_1306::SCREEN_LINE_HEIGHT * 0, str);
 
   return w;
 }
 
-int printMemPercent() {
+unsigned int printMemPercent() {
   char str[SSD_1306::SCREEN_WIDTH] = "";
 
   char numStr[SSD_1306::SCREEN_WIDTH] = "";
@@ -124,14 +124,14 @@ int printMemPercent() {
   strcat(str, numStr);
   strcat(str, "%");
 
-  int w = Display::OLED.getTextSize(str);
+  unsigned int w = Display::OLED.getTextSize(str);
 
   Display::OLED.printRaw(SSD_1306::SCREEN_WIDTH - w, SSD_1306::SCREEN_LINE_HEIGHT * 1, str);
 
   return w;
 }
 
-int printDate(int row, bool isRight) {
+unsigned int printDate(unsigned int row, bool isRight) {
   char str[SSD_1306::SCREEN_WIDTH] = "";
 
   char date[SSD_1306::SCREEN_WIDTH] = "";
@@ -143,6 +143,7 @@ int printDate(int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
+    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -152,7 +153,7 @@ int printDate(int row, bool isRight) {
   return Display::OLED.getTextSize(str);
 }
 
-int printTime(int row, bool isRight) {
+unsigned int printTime(unsigned int row, bool isRight) {
   char str[SSD_1306::SCREEN_WIDTH] = "";
 
   char time[SSD_1306::SCREEN_WIDTH] = "";
@@ -164,6 +165,7 @@ int printTime(int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
+    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -173,11 +175,215 @@ int printTime(int row, bool isRight) {
   return Display::OLED.getTextSize(str);
 }
 
+
+unsigned int printTVOC(float value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "TVOC:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  return Display::OLED.getTextSize(str);
+}
+
+unsigned int printHCHO_UGM3(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "HCHO:");
+
+  unsigned int num = value;
+  if (num > 1000) {
+    num = 0;
+  }
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(num, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "ug/m");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  unsigned int w = Display::OLED.getTextSize(str) + 1;
+
+  return Display::OLED.getTextSize(str) + printPower3(w, row);
+}
+
+unsigned int printCO2(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "CO2:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "ppm");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  return Display::OLED.getTextSize(str);
+}
+
+unsigned int printTemp(float value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "Temp:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+
+  strcat(str, " C");
+
+  unsigned int w = Display::OLED.getTextSize("C") + 1;
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+
+    printDeg(SSD_1306::SCREEN_WIDTH - w - 3, row);
+  } else {
+    Display::OLED.print(str, 0, row);
+
+    printDeg(w - 3, row);
+  }
+
+  Serial.println(str);
+
+  return Display::OLED.getTextSize(str);
+}
+
+unsigned int printHum(float value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "Hum:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "%");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  return Display::OLED.getTextSize(str);
+}
+
+unsigned int printUV(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "UV:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  return Display::OLED.getTextSize(str);
+}
+
+unsigned int printPM1(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "PM1:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "ug/m");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  unsigned int w = Display::OLED.getTextSize(str) + 1;
+
+  return Display::OLED.getTextSize(str) + printPower3(w, row);
+}
+unsigned int printPM2_5(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "PM2.5:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "ug/m");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  unsigned int w = Display::OLED.getTextSize(str) + 1;
+
+  return Display::OLED.getTextSize(str) + printPower3(w, row);
+}
+unsigned int printPM10(unsigned int value, unsigned int row, bool isRight) {
+  char str[SSD_1306::SCREEN_WIDTH] = "";
+  strcat(str, "PM10:");
+
+  char numStr[SSD_1306::SCREEN_WIDTH] = "";
+  itoa(value, numStr, 10);
+  strcat(str, numStr);
+  strcat(str, "ug/m");
+
+  if (isRight) {
+    Display::OLED.printRight(str, row);
+    ;
+  } else {
+    Display::OLED.print(str, 0, row);
+  }
+
+  Serial.println(str);
+
+  unsigned int w = Display::OLED.getTextSize(str) + 1;
+
+  return Display::OLED.getTextSize(str) + printPower3(w, row);
+}
+
 // >>>>>>>>>> 折线图 >>>>>>>>>>
 
 namespace ChartLine {
 
-int printChartName(int x, int y, Modes::Mode m) {
+unsigned int printChartName(unsigned int x, unsigned int y, Modes::Mode m) {
   char str[SSD_1306::SCREEN_WIDTH] = "";
   Modes::getModeName(m, str);
 
@@ -188,11 +394,11 @@ int printChartName(int x, int y, Modes::Mode m) {
   return Display::OLED.getTextSize(str);
 }
 
-int printChartUnit(int x, int y, Modes::Mode m) {
+unsigned int printChartUnit(unsigned int x, unsigned int y, Modes::Mode m) {
   char str[SSD_1306::SCREEN_WIDTH] = "";
   Modes::getUnit(m, str);
 
-  int w = Display::OLED.getTextSize(str);
+  unsigned int w = Display::OLED.getTextSize(str);
 
   switch (m) {
     case Modes::HCHO:
@@ -210,7 +416,7 @@ int printChartUnit(int x, int y, Modes::Mode m) {
   return w;
 }
 
-int printChartRange(int x, int y, int min, int max) {
+unsigned int printChartRange(unsigned int x, unsigned int y, int min, int max) {
   char str[SSD_1306::SCREEN_WIDTH] = "";
   char minStr[SSD_1306::SCREEN_WIDTH] = "";
   char maxStr[SSD_1306::SCREEN_WIDTH] = "";
@@ -226,7 +432,7 @@ int printChartRange(int x, int y, int min, int max) {
   return Display::OLED.getTextSize(str);
 }
 
-void printChartTime(int y) {
+void printChartTime(unsigned int y) {
   char start[SSD_1306::SCREEN_WIDTH] = "-23:00";
   char end[SSD_1306::SCREEN_WIDTH] = "+22:00";
 
@@ -234,13 +440,13 @@ void printChartTime(int y) {
   Display::OLED.print(SSD_1306::SCREEN_WIDTH - Display::OLED.getTextSize(end), SSD_1306::SCREEN_LINE_HEIGHT * y, end);
 }
 
-const int chartHeaderHeight = SSD_1306::SCREEN_LINE_HEIGHT * 2;
-const int chartHeight = SSD_1306::SCREEN_LINE_HEIGHT * 6;  // 最多定义6行
-const int chartCount = 24;                                 // 24小时内，每小时显示一个点
+const unsigned int chartHeaderHeight = SSD_1306::SCREEN_LINE_HEIGHT * 2;
+const unsigned int chartHeight = SSD_1306::SCREEN_LINE_HEIGHT * 6;  // 最多定义6行
+const unsigned int chartCount = 24;                                 // 24小时内，每小时显示一个点
 
-int getX(int value) {
+unsigned int getX(int value) {
   float p = value / (float)(chartCount - 1);
-  int r = floor(p * SSD_1306::SCREEN_WIDTH);
+  unsigned int r = floor(p * SSD_1306::SCREEN_WIDTH);
 
   if (r >= 128) {
     r = 127;
@@ -249,11 +455,11 @@ int getX(int value) {
   return r;
 }
 
-int getY(int min, int max, int value) {
+unsigned int getY(int min, int max, int value) {
   float width = max - min;
   float v = value - min;
   float p = v / width;
-  int r = floor(p * chartHeight - 2);  // 底部留2像素间隙
+  unsigned int r = floor(p * chartHeight - 2);  // 底部留2像素间隙
 
   if (r <= 0) {
     r = 1;
@@ -263,9 +469,9 @@ int getY(int min, int max, int value) {
 }
 
 // 阶乘
-// long power2(int start, int time) {
+// long power2(unsigned int start, unsigned int time) {
 //   long res = start;
-//   for (int i = 1; i < time; i++) {
+//   for (unsigned int i = 1; i < time; i++) {
 //     res *= 2;
 //   }
 //   return res;
@@ -274,7 +480,7 @@ int getY(int min, int max, int value) {
 void printLine(uint8_t* values) {
   int min = 10000;
   int max = -10000;
-  for (int x = 0; x < chartCount; x++) {
+  for (unsigned int x = 0; x < chartCount; x++) {
     if (values[x] < min) {
       min = values[x];
     } else if (values[x] > max) {
@@ -285,8 +491,8 @@ void printLine(uint8_t* values) {
   printChartRange(0, 0, min, max);
 
   // 填满测试
-  // for (int y = 2; y < 8; y++) {
-  //   for (int x = 0; x < 128; x++) {
+  // for (unsigned int y = 2; y < 8; y++) {
+  //   for (unsigned int x = 0; x < 128; x++) {
   //     uint8_t buffer[1] = { 0xFF };
   //     Display::OLED.drawBuffer(x, y, 1, 8, buffer);
   //   }
@@ -295,22 +501,22 @@ void printLine(uint8_t* values) {
 
   Display::OLED.clearBlock(0, 2, SSD_1306::SCREEN_WIDTH, SSD_1306::SCREEN_LINE_HEIGHT * 6);
 
-  for (int x = 1; x < chartCount; x++) {
+  for (unsigned int x = 1; x < chartCount; x++) {
     Serial.println();
 
-    int fx = getX(x - 1);
-    int fy = getY(min, max, values[x - 1]);
+    unsigned int fx = getX(x - 1);
+    unsigned int fy = getY(min, max, values[x - 1]);
 
-    int tx = getX(x);
-    int ty = getY(min, max, values[x]);
+    unsigned int tx = getX(x);
+    unsigned int ty = getY(min, max, values[x]);
 
     Display::OLED.drawLine(fx, fy + chartHeaderHeight, tx, ty + chartHeaderHeight);
   }
 }
 
 void printChart(Modes::Mode m) {
-  int w1 = printChartName(0, 0, m);
-  int w2 = printChartUnit(w1, 0, m);
+  unsigned int w1 = printChartName(0, 0, m);
+  unsigned int w2 = printChartUnit(w1, 0, m);
 
   switch (m) {
     case Modes::HCHO:
@@ -328,7 +534,7 @@ void printChart(Modes::Mode m) {
 
   uint8_t values[chartCount] = {};
 
-  for (int x = 0; x < chartCount; x++) {
+  for (unsigned int x = 0; x < chartCount; x++) {
     values[x] = rand() % 10000;
   }
 
@@ -346,6 +552,11 @@ void process() {
   Serial.println("");
   Serial.print(n);
   Serial.println("次");
+
+  Serial.print("mode:");
+  char modeName[5] = "";
+  Modes::getModeName(mode, modeName);
+  Serial.println(modeName);
 
   Serial.print("HCHO:");
   Serial.print(Module::HCHO.getValue());
@@ -377,22 +588,25 @@ void process() {
   Serial.print(Module::PM10.getValue());
   Serial.println(Module::PM.getUnit());
 
-  // 显示内容（务必先连接OLED）
+  // 以下设备务必先连接
+
+  // 显示内容
   // Display::OLED.clearBlockCenter(printDate(0, false), printMem(), 0);
   // Display::OLED.clearBlockCenter(printTime(1, false), printMemPercent(), 1);
+  // Display::OLED.clearBlockCenter(printTVOC(Module::TVOC.getValue(), 2, false), printTemp(Module::Temperature.getValue(), 2, true), 2);
+  // Display::OLED.clearBlockCenter(printHCHO_UGM3(Module::HCHO.getValue(), 3, false), printHum(Module::Humidity.getValue(), 3, true), 3);
+  // Display::OLED.clearBlockCenter(printCO2(Module::CO2.getValue(), 4, false), printUV(Module::UV.getValue(), 4, true), 4);
+  // Display::OLED.clearBlockCenter(printPM1(Module::PM1.getValue(), 5, false), 0, 5);
+  // Display::OLED.clearBlockCenter(printPM2_5(Module::PM1.getValue(), 6, false), 0, 6);
+  // Display::OLED.clearBlockCenter(printPM10(Module::PM1.getValue(), 7, false), 0, 7);
 
-  // 记录日志（务必先连接SD）
+  // 记录日志
   // DateTime now = Clock::RTC.now();
   // Storage::SD_Card.WriteLog(now);
   // Storage::SD_Card.ReadLog(now);
 }
 
 void loop() {
-  Serial.print("mode:");
-  char modeName[5] = "";
-  Modes::getModeName(mode, modeName);
-  Serial.println(modeName);
-
   if (Buttons::Btn_1.getValue()) {
     mode = mode + 1;
     if (mode > Modes::Length - 1) {

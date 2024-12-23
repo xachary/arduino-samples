@@ -30,7 +30,7 @@ struct _TVOC {
     }
   }
 
-  float getValue() {
+  int getValue() {
     int vals[2];
 
     int timeout = 0;
