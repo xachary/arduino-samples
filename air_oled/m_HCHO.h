@@ -5,7 +5,7 @@
 
 // 甲醛传感器
 // 型号：WZ-S
-// 接口：5V->VCC(5V)、G->GND、R->RX、T->TX
+// 接口：5V->VCC(5V)、G->GND、R->D2(RX)、T->D3(TX)
 // 协议：UART
 
 #define _Pin_HCHO_RX 2
