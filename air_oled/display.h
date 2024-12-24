@@ -54,7 +54,7 @@ struct _OLED {
     ssd1306_clearBlock(left, top, w, h);
   }
 
-  void clearBlockCenter(unsigned int left, unsigned int top, unsigned int right) {
+  void clearBlockCenter(unsigned int left, unsigned int right, unsigned int top) {
     clearBlock(left, top, SSD_1306::SCREEN_WIDTH - left - right, SSD_1306::SCREEN_LINE_HEIGHT);
   }
 
