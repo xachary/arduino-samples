@@ -32,9 +32,10 @@ void setup() {
     Serial.print("\n");
   }
 
-  Clock::RTC.Init();
+  // Clock::RTC.Init();
 
-  Module::CO2.Init();
+  // Module::CO2.Init();
+  // Module::TVOC.Init();
   Module::PM.Init();
 
   // 以下设备务必先连接
@@ -143,7 +144,6 @@ unsigned int printDate(unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -165,7 +165,6 @@ unsigned int printTime(unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -186,7 +185,6 @@ unsigned int printTVOC(float value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -233,7 +231,6 @@ unsigned int printCO2(unsigned int value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -257,7 +254,6 @@ unsigned int printTemp(float value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
 
     printDeg(SSD_1306::SCREEN_WIDTH - w - 3, row);
   } else {
@@ -282,7 +278,6 @@ unsigned int printHum(float value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -302,7 +297,6 @@ unsigned int printUV(unsigned int value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -323,7 +317,6 @@ unsigned int printPM1(unsigned int value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -367,7 +360,6 @@ unsigned int printPM10(unsigned int value, unsigned int row, bool isRight) {
 
   if (isRight) {
     Display::OLED.printRight(str, row);
-    ;
   } else {
     Display::OLED.print(str, 0, row);
   }
@@ -558,26 +550,27 @@ void process() {
   Modes::getModeName(mode, modeName);
   Serial.println(modeName);
 
-  Serial.print("HCHO:");
-  Serial.print(Module::HCHO.getValue());
-  Serial.println(Module::HCHO.getUnit());
-  Serial.print("Temperature:");
-  Serial.print(Module::Temperature.getValue());
-  Serial.println(Module::Temperature.getUnit());
-  Serial.print("Humidity:");
-  Serial.print(Module::Humidity.getValue());
-  Serial.println(Module::Humidity.getUnit());
-  Serial.print("UV:");
-  Serial.print(Module::UV.getValue());
-  Serial.println(Module::UV.getUnit());
-  Serial.print("CO2:");
-  Serial.print(Module::CO2.getValue());
-  Serial.println(Module::CO2.getUnit());
-  Serial.print("TVOC:");
-  Serial.print(Module::TVOC.getValue());
-  Serial.println(Module::TVOC.getUnit());
-
   Module::PM.Read();
+
+  // Serial.print("HCHO:");
+  // Serial.print(Module::HCHO.getValue());
+  // Serial.println(Module::HCHO.getUnit());
+  // Serial.print("Temperature:");
+  // Serial.print(Module::Temperature.getValue());
+  // Serial.println(Module::Temperature.getUnit());
+  // Serial.print("Humidity:");
+  // Serial.print(Module::Humidity.getValue());
+  // Serial.println(Module::Humidity.getUnit());
+  // Serial.print("UV:");
+  // Serial.print(Module::UV.getValue());
+  // Serial.println(Module::UV.getUnit());
+  // Serial.print("CO2:");
+  // Serial.print(Module::CO2.getValue());
+  // Serial.println(Module::CO2.getUnit());
+  // Serial.print("TVOC:");
+  // Serial.print(Module::TVOC.getValue());
+  // Serial.println(Module::TVOC.getUnit());
+
   Serial.print("PM1:");
   Serial.print(Module::PM1.getValue());
   Serial.println(Module::PM.getUnit());

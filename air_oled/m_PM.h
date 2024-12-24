@@ -6,7 +6,7 @@
 
 // PM
 // 型号：fs00905
-// 转接板：红->VCC(5V)、绿->RX(D7)、黄->TX(D6,可不接)、黑->GND
+// 转接板：红(红线)->VCC(5V)、绿(黑线)->RX(D7)、黄(黄线)->TX(D6,可不接)、黑(绿线)->GND
 // 协议：UART
 
 #define _Pin_PM_RX 7
@@ -32,7 +32,7 @@ int data_pm2_5 = 0;
 int data_pm10 = 0;
 
 void Calc() {
-  int timeout = 0;
+  unsigned int timeout = 0;
 
   // 位序号
   int count = 0;
@@ -69,6 +69,7 @@ void Calc() {
         // 起始
         flag_start = true;
       }
+
       // 记录 上一位
       last_byte_val = byte_val;
 
@@ -124,7 +125,7 @@ void Calc() {
 void Read() {
   // 串口可用
   if (_serial_pm.isListening()) {
-    int timeout = 0;
+    unsigned int timeout = 0;
     // 容错10次
     while (buffer_done == false && timeout < 10)  //等待数据接收一帧完整
     {
@@ -159,19 +160,19 @@ struct _PM {
 } PM;
 
 struct _PM1 {
-  float getValue() {
+  int getValue() {
     return FS_00905::data_pm1;
   }
 } PM1;
 
 struct _PM2_5 {
-  float getValue() {
+  int getValue() {
     return FS_00905::data_pm2_5;
   }
 } PM2_5;
 
 struct _PM10 {
-  float getValue() {
+  int getValue() {
     return FS_00905::data_pm10;
   }
 } PM10;
