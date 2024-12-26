@@ -16,6 +16,8 @@
 // TH 为一个输出周期中输出为高电平的时间
 // TL 为一个输出周期中输出为低电平的时间
 
+// PWM端口：3、5、6、9、10、11、13
+
 // 二氧化碳
 // 型号：mtp_40_f
 // 接口：G+->VCC(5V)、G->GND、PWM->D3
@@ -61,11 +63,11 @@ struct _CO2 {
     if (value > 10000) {
       value = 0;
     }
+
+    return value;
   }
 
-  String getUnit() {
-    return "ug\/m";
-  }
+  char unit[6] = "ug\/m";
 } CO2;
 
 }
