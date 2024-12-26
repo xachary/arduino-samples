@@ -6,9 +6,9 @@
 namespace Clock {
 
 // 时钟
-// 接口：VCC->VCC(5V)、GND->GND、CLK->D7、DAT->D8、RST-D9
+// 接口：VCC->VCC(5V)、GND->GND、CLK->D2、DAT->D4、RST-D5
 // 协议：SPI
-DS1302 _rtc(9, 7, 8);
+DS1302 _rtc(5, 2, 4);
 
 struct _RTC {
   void Init() {
